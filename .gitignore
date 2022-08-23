@@ -2,10 +2,10 @@
 *.class
 
 # gradle, build folder
-.gradle
-.idea
-build
-gradle
+.gradle/*
+.idea/*
+build/*
+gradle/*
 driver.properties
 
 # Log file

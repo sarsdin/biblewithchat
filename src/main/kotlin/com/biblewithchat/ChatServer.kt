@@ -24,7 +24,7 @@ class ChatServer {
 
     var now: Date = Date(System.currentTimeMillis())
     var simple = SimpleDateFormat("(a hh:mm)")
-    var simple_std = SimpleDateFormat("yyyy-MM-dd hh:mm:ss")
+    var simple_std = SimpleDateFormat("yyyy-MM-dd H:mm:ss")
     //채팅내용 옆에 시간을 같이 출력하기 위해서 현재시간에 포맷을 지정
 
     fun start() {

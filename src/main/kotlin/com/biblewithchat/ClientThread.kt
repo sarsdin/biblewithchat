@@ -13,15 +13,6 @@ import java.util.*
 
 class ClientThread(socket: Socket?, cliInfo: JsonObject, chatServer: ChatServer) : Thread() {
 
-    private val LOGIN = 100
-    private val LOGOUT = 200
-    private val EXIT = 300
-    private val NOMAL = 400
-    private val WISPER = 500
-    private val VAN = 600
-    private val CPLIST = 700
-    private val ERR_DUP = 800
-
     val dbCon =  DbControll()
 
     var cliList = Vector<ClientThread>() //같은 방에 있는 클라이언트 리스트
@@ -32,7 +23,7 @@ class ClientThread(socket: Socket?, cliInfo: JsonObject, chatServer: ChatServer)
     lateinit var msg: String        //이 원격 클라이언트와 같은 방에 연결된 다른 원격 클라이언트(소켓)들에 뿌려줄 문자열 메시지
     lateinit var binaryMsg: String  //이 원격 클라이언트와 같은 방에 연결된 다른 원격 클라이언트(소켓)들에 뿌려줄 byte 메시지(이미지,파일 등)
 
-    lateinit var rmsg: Array<String>
+//    lateinit var rmsg: Array<String>
     private var inMsg: BufferedReader? = null
     var outMsg: PrintWriter? = null
 
@@ -76,7 +67,7 @@ class ClientThread(socket: Socket?, cliInfo: JsonObject, chatServer: ChatServer)
                 //그래서 서비스에서 서버로 재접속시 사용한 소켓을 다시 클라이언트 스레드(이곳)를 방번호와 유저번호를 이용해
                 //ChatServer에서 찾은 후 접속한 socket을 setter등으로 다시 대입해줘야함(public이면 그냥 넣어주기)
                 if (socket == null) {
-                    sleep(100)
+                    sleep(10)
                     continue
                 }
                 msg = inMsg!!.readLine()?:""
@@ -111,8 +102,28 @@ class ClientThread(socket: Socket?, cliInfo: JsonObject, chatServer: ChatServer)
                                 tmpL
                             }
 
-                            val sendMsg = dbCon.현재채팅목록갱신(jin)
-                            chatServer.broadCast(sendMsg.toString(), cliL)
+                            val sendMsg1 = dbCon.현재채팅목록갱신(jin) // 이건 outMsg 로 나한테만 보내고
+//                            outMsg!!.println(sendMsg.toString())
+                            val sendMsg2 = dbCon.채팅방목록전달(jin)
+                            val sendJo = JsonObject()
+                            sendJo.add("chatRoomL", sendMsg1)
+                            sendJo.add("chatL", sendMsg2)
+
+                            //통합해서 보내기로 변경: chatL는 GroupChatInnerFm(채팅방안)
+                            //chatRoomL은 GroupInChatFm(채팅목록) 에서 각각 필요한 것 선택해서 활용하는 걸로..
+                            //어차피 여기로 보내져오는 정보는 group_no, user_no, chat_room_no 이정도면 select 쿼리할 정보도 중복되고..
+                            //채팅목록을 핸들러에서 받아 갱신할때는 현재 채팅목록이 보여지는 (소속한)모임의 번호와 채팅이 전달되어온 곳의
+                            //group_no랑 일치하는 지만 조건으로 비교하고 일치하면 그 정보를 갱신해주면된다. 그럼 옵져버가 ui 갱신한다.
+                            chatServer.broadCast(sendJo.toString(), cliL)
+
+                            println("방의 스레드리스트: ${cliL}")
+                            println("방의 0번 스레드 remote socket address: ${cliL[0].socket?.remoteSocketAddress}")
+                            println("방의 0번 스레드 정보: id - ${cliL[0].id}, " +
+                                    "name - ${cliL[0].name}, isAlive - ${cliL[0].isAlive}, " +
+                                    "priority - ${cliL[0].priority}, state - ${cliL[0].state}, " +
+                                    "threadGroup - ${cliL[0].threadGroup}")
+
+//                            chatServer.broadCast(msg.toString(), cliL) // 여기로는 내가 쓴 채팅내용만 보내면될듯? 보낸 장소에는 chatL에 add만하고?
 //                            chatServer.broadCast(msg, cliList)
 //                            println("방의 스레드리스트: ${cliList}")
 //                            println("방의 0번 스레드 remote socket address: ${cliList[0].socket?.remoteSocketAddress}")
@@ -120,12 +131,6 @@ class ClientThread(socket: Socket?, cliInfo: JsonObject, chatServer: ChatServer)
 //                                    "name - ${cliList[0].name}, isAlive - ${cliList[0].isAlive}, " +
 //                                    "priority - ${cliList[0].priority}, state - ${cliList[0].state}, " +
 //                                    "threadGroup - ${cliList[0].threadGroup}")
-                            println("방의 스레드리스트: ${cliL}")
-                            println("방의 0번 스레드 remote socket address: ${cliL[0].socket?.remoteSocketAddress}")
-                            println("방의 0번 스레드 정보: id - ${cliL[0].id}, " +
-                                    "name - ${cliL[0].name}, isAlive - ${cliL[0].isAlive}, " +
-                                    "priority - ${cliL[0].priority}, state - ${cliL[0].state}, " +
-                                    "threadGroup - ${cliL[0].threadGroup}")
 
 
                         }
@@ -134,14 +139,22 @@ class ClientThread(socket: Socket?, cliInfo: JsonObject, chatServer: ChatServer)
                             //group_no 를 이용해 해당하는 모임의 채팅목록 + 마지막 채팅튜플 + 내가 읽지않은 메시지 개수 를 보여줘야함.
 //                            chatServer.broadCast(msg, cliList)
                             val sendMsg = dbCon.채팅방목록전달(jin)
-                            outMsg!!.println(sendMsg)
+                            println("${gson.toJson(sendMsg)}")
+                            outMsg!!.println(sendMsg.toString())
                         }
                         "채팅갱신" ->{
                             println("## 채팅갱신 실행")
-                            //group_no 를 이용해 해당하는 모임의 채팅목록 + 마지막 채팅튜플 + 내가 읽지않은 메시지 개수 를 보여줘야함.
 //                            chatServer.broadCast(msg, cliList)
                             val sendMsg = dbCon.현재채팅목록갱신(jin)
-                            outMsg!!.println(sendMsg)
+                            println("${gson.toJson(sendMsg)}")
+                            outMsg!!.println(sendMsg.toString())
+                        }
+                        "채팅읽음처리" ->{
+                            println("## 채팅읽음처리 실행")
+//                            chatServer.broadCast(msg, cliList)
+                            /*val sendMsg =*/ dbCon.현재채팅읽음처리(jin)
+//                            println("${gson.toJson(sendMsg)}")
+//                            outMsg!!.println(sendMsg.toString())
                         }
                         "방나가기" ->{
                             //이 클라가 속한 방에서 탈퇴함 - 방번호 이용해서 db에서 이 참가유저번호 삭제해줌
@@ -170,10 +183,11 @@ class ClientThread(socket: Socket?, cliInfo: JsonObject, chatServer: ChatServer)
             try {
                 socket?.close()
             } catch (e1: IOException) {
+                e.printStackTrace()
             }
             cliList.remove(this)
-            // e.printStackTrace();
-            println("[ChatThread] run() IOException 발생!! interrupt() 실행됐음")
+            e.printStackTrace()
+            println("[ClientThread] run() IOException 발생!! or interrupt() 실행됐음")
         }
         println("##" + name + "종료됨~")
     }
@@ -208,6 +222,11 @@ class ClientThread(socket: Socket?, cliInfo: JsonObject, chatServer: ChatServer)
             //검사하는 과정이 필요가 없음. 하지만, http 요청으로 방만들기 + 방접속 로직을 짜버려서 어쩔 수 없다...ㅠ
 
             dbCon.현재채팅방첫접속여부체크변경(cliInfo)
+            //채팅 소켓서버와 http 웹서버의 시간이 미묘하게 다를수 있다. 그러면 :s 이부분이 web쪽이 조금더 느릴수도있는데
+            //이러면 접속알림을 업데이트하는 소켓채팅서버의 date작업시간이 더 빠르게 기록될수도있다.
+            //그러면 접속알림을 보여주는 쿼리가 찰나의 시간차이로 포함되지 않을 수 있음.
+            //http웹쪽 서버의 db업데이트 기록시간이 좀더 빨라야 나중에 채팅데이터를 정상적으로 가져올 수 있을듯!
+            //그래서 php서버의 user_chat_join_date 값을 insert 시 date()함수의 strtotime() 함수로 -5초를 함
             dbCon.전달받은채팅저장(cliInfo) //접속알림 저장
             chatServer.broadCast(cliInfo.toString(), cliList) //클라에서 접속알림 뷰타입을 띄우는 채팅전달
             

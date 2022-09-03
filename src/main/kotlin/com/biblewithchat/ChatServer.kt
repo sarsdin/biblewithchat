@@ -116,6 +116,18 @@ class ChatServer {
         }
     }
 
+    // 보낼 메시지를 db에서 가져올때 각 사용자 클라이언트의 user_no를 적용하여  각 클라이언트에 뿌려준다.
+    fun broadCast2(jin: JsonObject, cliList: Vector<ClientThread>) { //채팅방 인원 전체출력
+        println("broadCast 실행: ${jin}")
+        for (cli in cliList) {
+            //여기 메소드를 사용: cli.현재채팅갱신(jin) jin 안에는 각 스레드의 초기화때 얻은 user_no 를 이용하여 사용자번호에 해당하는 번호를 교체해서
+            //전달하는 msg를 조립해야한다.
+//            val msg = cli.채팅전달시각클라의사용자번호적용(jin)
+//            cli.outMsg!!.println(msg )
+            //매개변수로 받은 채팅내용을 시간과 함께 출력
+        }
+    }
+
     fun wisper(from: ClientThread, to: ClientThread, msg: String) { //송신그레드,수신스레드,대화내용 매개변수)
         from.outMsg!!.println(msg + simple.format(now)) //송신스레드 채팅창에 출력
         to.outMsg!!.println(msg + simple.format(now)) // 수신스레드 채팅창에 출력
